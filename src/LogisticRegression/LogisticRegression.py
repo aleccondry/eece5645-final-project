@@ -2,9 +2,8 @@ import numpy as np
 import argparse
 import matplotlib.pyplot as plt
 import pandas as pd
-from ParallelLogisticRegressionModel import ParallelLogisticRegressionModel
+from LogisticRegressionModel import LogisticRegressionModel
 import random
-from pyspark import SparkContext
 
 
 def write_beta(output, beta_to_save, feature_names):
@@ -56,19 +55,12 @@ def unison_shuffled_copies(a, b):
     return a[p], b[p]
 
 
-def parallelize_data(spark_context, features, labels):
-    result = []
-    for feature, label in zip(features, labels):
-        result.append((feature, label))
-    return spark_context.parallelize(result)
-
-
 def create_data_plots(k, data, label=""):
     plt.plot([i for i in range(1, k)], data, label=label)
     plt.xlabel("Number of Iterations")
     plt.ylabel(label)
     plt.title(f'{label} vs Number of Iterations')
-    plt.savefig(f'../results_logreg/{label}_fig_parallelized.png')
+    plt.savefig(f'./LogisticRegression/results/{label}_fig_unparallelized.png')
 
 
 def create_metric_plots(k, metrics, label=""):
@@ -83,31 +75,24 @@ def create_metric_plots(k, metrics, label=""):
     plt.xlabel("Number of Iterations")
     plt.ylabel("Metric Value")
     plt.title(f'{label} Metrics vs Number of Iterations')
-    plt.savefig(f'../results_logreg/metrics_fig_parallelized.png')
+    plt.savefig(f'./LogisticRegression/results/metrics_fig_unparallelized.png')
 
 
 if __name__ == "__main__":
     # Set up argument parser and associated flags
-    parser = argparse.ArgumentParser(description="Logistic Regression.", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--data', default='../data/Clean_data.csv', help='Input file containing all features and labels, used to train a logistic model')
-    parser.add_argument('--beta', default='../results_logreg/beta', help='File where beta is stored')
-    parser.add_argument('--split', type=float, default=0.8, help='Test/Training split. Percentage of data to be used for training')
+    parser = argparse.ArgumentParser(description="Logistic Regression.",
+                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument('--data', default='../data/Clean_data.csv',
+                        help='Input file containing all features and labels, used to train a logistic model')
+    parser.add_argument('--beta', default='./LogisticRegression/results/beta.txt', help='File where beta is stored')
+    parser.add_argument('--split', type=float, default=0.8,
+                        help='Test/Training split. Percentage of data to be used for training')
     parser.add_argument('--lam', type=float, default=0.0, help="Regularization parameter λ")
-    parser.add_argument('--max_iter', type=int, default=10, help='Maximum number of iterations')
-    parser.add_argument('--N', type=int, default=20, help='Level of parallelism/number of partitions')
-    parser.add_argument('--eps', type=float, default=0.1, help='ε-tolerance. If the l2_norm gradient is smaller than ε, gradient descent terminates.')
-
-    verbosity_group = parser.add_mutually_exclusive_group(required=False)
-    verbosity_group.add_argument('--verbose', dest='verbose', action='store_true', help="Print Spark warning/info messages.")
-    verbosity_group.add_argument('--silent', dest='verbose', action='store_false', help="Suppress Spark warning/info messages.")
-    parser.set_defaults(verbose=False)
+    parser.add_argument('--max_iter', type=int, default=2, help='Maximum number of iterations')
+    parser.add_argument('--eps', type=float, default=0.1,
+                        help='ε-tolerance. If the l2_norm gradient is smaller than ε, gradient descent terminates.')
 
     args = parser.parse_args()
-
-    sc = SparkContext(appName='Parallel Sparse Logistic Regression')
-
-    if not args.verbose:
-        sc.setLogLevel("ERROR")
 
     data_path = args.data
     if data_path is None:
@@ -127,7 +112,7 @@ if __name__ == "__main__":
     print("Oversampling complete")
 
     feature_labels = get_all_features(features_pd)
-    model = ParallelLogisticRegressionModel(num_features=len(feature_labels))
+    model = LogisticRegressionModel(num_features=len(feature_labels))
     TRAIN_SPLIT = args.split
     END_IDX = int(len(labels_np) * TRAIN_SPLIT)
 
@@ -138,21 +123,17 @@ if __name__ == "__main__":
     y_test = labels_np[END_IDX:]
     assert ((len(x_train) + len(x_test)) == (len(y_train) + len(y_test)) == len(features_np))
 
-    train_data = parallelize_data(sc, x_train, y_train)
-    test_data = parallelize_data(sc, x_test, y_test)
-
     print('Training on data from', args.data,
-          'with: λ = %f, ε = %f, max iter = %d:' % (args.lam, args.eps, args.max_iter))
-    t, k, losses, grad_norms, metrics_t, metrics_v, beta = model.trainRDD(train_data, test_data,
-                                                                          lam=args.lam,
-                                                                          eps=args.eps,
-                                                                          max_iter=args.max_iter,
-                                                                          N=args.N)
+          'with: λ = %f, ε = %f, max iter= %d:' % (args.lam, args.eps, args.max_iter))
+    t, k, losses, grad_norms, metrics_t, metrics_v, beta = model.train(x_train, y_train, x_test, y_test,
+                                                                       lam=args.lam,
+                                                                       eps=args.eps,
+                                                                       max_iter=args.max_iter)
     print('Unparallelized logistic regression ran for', k, 'iterations. Converged', grad_norms[-1] < args.eps)
     print("Saving trained β in", args.beta)
     write_beta(args.beta, beta, feature_labels)
 
-    print("Creating plots of results_logreg...")
+    print("Creating plots of results...")
     create_data_plots(k, losses, label="Loss")
     create_data_plots(k, grad_norms, label='GradNorm')
     create_metric_plots(k, metrics_t, label="Train")

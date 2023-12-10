@@ -19,14 +19,6 @@ class ParallelLogisticRegressionModel(LogisticRegressionModel):
         regularization = 2 * lam * beta
         return gradLogLoss + regularization
 
-    def lineSearch(self, fun, x, grad, a=0.2, b=0.6):
-        t = 1e-5
-        fx = fun(x)
-        gradNormSq = np.dot(grad, grad)
-        while fun(x - t * grad) > fx - a * t * gradNormSq:
-            t = b * t
-        return t
-
     def basicMetricsRDD(self, data, beta):
         pairsRDD = data.map(lambda inp: (int(np.sign(np.dot(beta, self.get_features(inp[0])))), int(inp[1])))
         new_pairs = pairsRDD.map(lambda inp: (inp[0], inp[0] * inp[1])).collect()
@@ -43,29 +35,36 @@ class ParallelLogisticRegressionModel(LogisticRegressionModel):
         P, N, TP, FP, TN, FN = self.basicMetricsRDD(data, beta)
         return self.metrics(P, N, TP, FP, TN, FN)
 
-    def trainRDD(self, train_data, test_data, lam=1, eps=1e-3, max_iter=1000, N=20):
+    def trainRDD(self, train_data, test_data, lam=1, eps=1e-3, max_iter=1000):
         k = 1
         grad_norm = 2 * eps
         start = time.time()
         losses, grad_norms, metrics_t, metrics_v = ([] for _ in range(4))
         while k < max_iter and grad_norm > eps:
+            # Get gradient of loss and update weights
             grad = self.gradTotalLossRDD(train_data, self.weights, lam)
+            self.weights -= self.alpha * grad
+
+            # Calculate GradNorm
             fun = lambda x: self.totalLossRDD(train_data, x, lam)
-            gamma = 1e-7
-            # gamma = self.lineSearch(fun, self.weights, grad)
-            self.weights -= gamma * grad
             obj = fun(self.weights)
             grad_norm = np.sqrt(np.dot(grad, grad))
+
+            # Evaluate training and test metrics
             acc_t, pre_t, rec_t = self.get_metricsRDD(train_data, self.weights)
             acc_v, pre_v, rec_v = self.get_metricsRDD(test_data, self.weights)
+
+            # Store data on current iteration
             losses.append(obj)
             grad_norms.append(grad_norm)
             metrics_t.append((acc_t, pre_t, rec_t))
             metrics_v.append((acc_v, pre_v, rec_v))
+
+            # Print results from current iteration
             print(f'{k}: t={"{:.5f}".format(time.time() - start)}\t'
                   f'L(β_k)={"{:.5f}".format(obj)}\t'
                   f'||∇L(β_k)||_2={"{:.5f}".format(grad_norm)}\t'
-                  f'γ={"{:.5E}".format(gamma)}\t'
+                  f'γ={"{:.5E}".format(self.alpha)}\t'
                   f'train acc={"{:.5}".format(acc_t)}\t'
                   f'test acc={"{:.5}".format(acc_v)}')
             k += 1

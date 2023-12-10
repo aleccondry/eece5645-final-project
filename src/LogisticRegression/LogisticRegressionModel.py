@@ -3,7 +3,7 @@ import time
 
 
 class LogisticRegressionModel:
-    def __init__(self, num_features, learning_rate=1e-5):
+    def __init__(self, num_features, learning_rate=1e-7):
         self.num_features = num_features
         self.alpha = learning_rate
         self.weights = np.zeros(num_features + 1)
@@ -29,14 +29,6 @@ class LogisticRegressionModel:
                                               in zip(x_train, y_train)]), axis=0)
         regularization = 2 * lam * beta
         return gradLogisticLosses + regularization
-
-    def lineSearch(self, fun, x, grad, a=0.2, b=0.6):
-        t = 1e-5
-        fx = fun(x)
-        gradNormSq = np.dot(grad, grad)
-        while fun(x - t * grad) > fx - a * t * gradNormSq:
-            t = b * t
-        return t
 
     def basicMetrics(self, x_data, y_data, beta):
         pairs = ((int(np.sign(np.dot(beta, self.get_features(x)))), int(y)) for (x, y) in zip(x_data, y_data))
@@ -68,9 +60,7 @@ class LogisticRegressionModel:
         while k < max_iter and grad_norm > eps:
             grad = self.gradTotalLoss(x_train, y_train, self.weights, lam)
             fun = lambda x: self.totalLoss(x_train, y_train, x, lam)
-            gamma = 1e-7
-            # gamma = self.lineSearch(fun, self.weights, grad)
-            self.weights -= gamma * grad
+            self.weights -= self.alpha * grad
             obj = fun(self.weights)
             grad_norm = np.sqrt(np.dot(grad, grad))
 
@@ -88,7 +78,7 @@ class LogisticRegressionModel:
             print(f'{k}: t={"{:.5f}".format(time.time() - start)}\t'
                   f'L(β_k)={"{:.5f}".format(obj)}\t'
                   f'||∇L(β_k)||_2={"{:.5f}".format(grad_norm)}\t'
-                  f'γ={"{:.5E}".format(gamma)}\t'
+                  f'γ={"{:.5E}".format(self.alpha)}\t'
                   f'train acc={"{:.5}".format(acc_t)}\t'
                   f'test acc={"{:.5}".format(acc_v)}')
             k += 1

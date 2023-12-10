@@ -28,8 +28,8 @@ class ParallelLogisticRegressionModel(LogisticRegressionModel):
         return t
 
     def basicMetricsRDD(self, data, beta):
-        pairs = ((int(np.sign(np.dot(beta, self.get_features(x)))), int(y)) for (x, y) in zip(x_data, y_data))
-        new_pairs = [(pred_label, pred_label * true_label) for (pred_label, true_label) in pairs]
+        pairsRDD = data.map(lambda inp: int(np.sign(np.dot(beta, self.get_features(inp[0]))), int(inp[1])))
+        new_pairs = pairsRDD.map(lambda inp: (inp[0], inp[0] * inp[1])).collect()
 
         TP = 1. * new_pairs.count((1, 1)) + 1
         FP = 1. * new_pairs.count((1, -1)) + 1

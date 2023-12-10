@@ -28,7 +28,7 @@ class ParallelLogisticRegressionModel(LogisticRegressionModel):
         return t
 
     def basicMetricsRDD(self, data, beta):
-        pairsRDD = data.map(lambda inp: int(np.sign(np.dot(beta, self.get_features(inp[0]))), int(inp[1])))
+        pairsRDD = data.map(lambda inp: (int(np.sign(np.dot(beta, self.get_features(inp[0])))), int(inp[1])))
         new_pairs = pairsRDD.map(lambda inp: (inp[0], inp[0] * inp[1])).collect()
 
         TP = 1. * new_pairs.count((1, 1)) + 1
@@ -39,12 +39,6 @@ class ParallelLogisticRegressionModel(LogisticRegressionModel):
         N = TN + FN
         return P, N, TP, FP, TN, FN
 
-    # def metrics(self, P, N, TP, FP, TN, FN):
-    #     acc = (TP + TN) / (P + N)
-    #     pre = TP / (TP + FP)
-    #     rec = TP / (TP + FN)
-    #     return acc, pre, rec
-
     def get_metricsRDD(self, data, beta):
         P, N, TP, FP, TN, FN = self.basicMetricsRDD(data, beta)
         return self.metrics(P, N, TP, FP, TN, FN)
@@ -53,10 +47,7 @@ class ParallelLogisticRegressionModel(LogisticRegressionModel):
         k = 1
         grad_norm = 2 * eps
         start = time.time()
-        losses = []
-        grad_norms = []
-        metrics_t = []
-        metrics_v = []
+        losses, grad_norms, metrics_t, metrics_v = ([] for _ in range(4))
         while k < max_iter and grad_norm > eps:
             grad = self.gradTotalLossRDD(train_data, self.weights, lam)
             fun = lambda x: self.totalLossRDD(train_data, x, lam)
@@ -75,8 +66,8 @@ class ParallelLogisticRegressionModel(LogisticRegressionModel):
                   f'L(β_k)={"{:.5f}".format(obj)}\t'
                   f'||∇L(β_k)||_2={"{:.5f}".format(grad_norm)}\t'
                   f'γ={"{:.5E}".format(gamma)}\t'
-                  f'train acc={"{:.5E}".format(acc_t)}\t'
-                  f'test acc={"{:.5E}".format(acc_v)}')
+                  f'train acc={"{:.5}".format(acc_t)}\t'
+                  f'test acc={"{:.5}".format(acc_v)}')
             k += 1
-        return time.time() - start, k, losses, grad_norms, metrics_t, metrics_v
+        return time.time() - start, k, losses, grad_norms, metrics_t, metrics_v, self.weights
 

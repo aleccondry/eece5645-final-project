@@ -64,7 +64,7 @@ class LogisticRegressionModel:
         k = 1
         grad_norm = 2 * eps
         start = time.time()
-        losses, grad_norms, metrics_t, metrics_v = ([] for i in range(4))
+        losses, grad_norms, metrics_t, metrics_v = ([] for _ in range(4))
         while k < max_iter and grad_norm > eps:
             grad = self.gradTotalLoss(x_train, y_train, self.weights, lam)
             fun = lambda x: self.totalLoss(x_train, y_train, x, lam)

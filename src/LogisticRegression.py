@@ -60,7 +60,7 @@ def create_data_plots(k, data, label=""):
     plt.xlabel("Number of Iterations")
     plt.ylabel(label)
     plt.title(f'{label} vs Number of Iterations')
-    plt.show()
+    plt.savefig(f'../results_logreg/{label}_fig_unparallelized.png')
 
 
 def create_metric_plots(k, metrics, label=""):
@@ -75,7 +75,7 @@ def create_metric_plots(k, metrics, label=""):
     plt.xlabel("Number of Iterations")
     plt.ylabel("Metric Value")
     plt.title(f'{label} Metrics vs Number of Iterations')
-    plt.show()
+    plt.savefig(f'../results_logreg/metrics_fig_unparallelized.png')
 
 
 if __name__ == "__main__":
@@ -84,7 +84,7 @@ if __name__ == "__main__":
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--data', default='../data/Clean_data.csv',
                         help='Input file containing all features and labels, used to train a logistic model')
-    parser.add_argument('--beta', default='beta', help='File where beta is stored')
+    parser.add_argument('--beta', default='../results_logreg/beta', help='File where beta is stored')
     parser.add_argument('--split', type=float, default=0.8,
                         help='Test/Training split. Percentage of data to be used for training')
     parser.add_argument('--lam', type=float, default=0.0, help="Regularization parameter λ")
@@ -133,7 +133,7 @@ if __name__ == "__main__":
     print("Saving trained β in", args.beta)
     write_beta(args.beta, beta, feature_labels)
 
-    print("Creating plots of results...")
+    print("Creating plots of results_logreg...")
     create_data_plots(k, losses, label="Loss")
     create_data_plots(k, grad_norms, label='GradNorm')
     create_metric_plots(k, metrics_t, label="Train")

@@ -20,10 +20,10 @@ class LogisticRegressionModel:
     def gradLogisticLoss(self, beta, x, y) -> np.array:
         return -1. * y * x / (1. + np.e ** (y * np.dot(beta, x)))
 
-    def totalLoss(self, x_train, y_train, beta, lam=0.0) -> float:
+    def totalLoss(self, x_train, y_train, beta, lam) -> float:
         return sum([self.logisticLoss(beta, x, y) for x, y in zip(x_train, y_train)]) + lam * np.dot(beta, beta)
 
-    def gradTotalLoss(self, x_train, y_train, beta, lam=0.0) -> np.array:
+    def gradTotalLoss(self, x_train, y_train, beta, lam) -> np.array:
         gradLogisticLosses = np.sum(np.array([self.gradLogisticLoss(beta, self.get_features(x), y)
                                               for x, y
                                               in zip(x_train, y_train)]), axis=0)
@@ -39,11 +39,6 @@ class LogisticRegressionModel:
         return t
 
     def basicMetrics(self, x_data, y_data, beta):
-        for i in y_data:
-            try:
-                int(i)
-            except:
-                print(i)
         pairs = ((int(np.sign(np.dot(beta, self.get_features(x)))), int(y)) for (x, y) in zip(x_data, y_data))
         new_pairs = [(pred_label, pred_label * true_label) for (pred_label, true_label) in pairs]
 

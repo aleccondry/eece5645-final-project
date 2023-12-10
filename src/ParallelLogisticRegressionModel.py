@@ -1,35 +1,23 @@
 import numpy as np
 import time
 import pyspark
+from LogisticRegressionModel import LogisticRegressionModel
 
 
-class ParallelLogisticRegressionModel:
-    def __init__(self, num_features, learning_rate=1e-5):
-        self.num_features = num_features
-        self.alpha = learning_rate
+class ParallelLogisticRegressionModel(LogisticRegressionModel):
+    def __init__(self, num_features, learning_rate=1e-7):
+        super().__init__(num_features, learning_rate)
         self.weights = np.zeros(num_features + 1)
 
-    def get_features(self, x):
-        return np.append([1], x)
+    def totalLossRDD(self, data: pyspark.RDD, beta: np.array, lam) -> float:
+        return data.map(lambda inp: self.logisticLoss(beta, inp[0], inp[1]))\
+                   .reduce(lambda x, y: x + y) + lam * np.dot(beta, beta)
 
-    def get_weights(self):
-        return self.weights
-
-    def logisticLoss(self, beta, x, y) -> float:
-        return np.log(1. + np.e ** (-y * np.dot(beta, self.get_features(x))))
-
-    def gradLogisticLoss(self, beta, x, y) -> np.array:
-        return -1. * y * x / (1. + np.e ** (y * np.dot(beta, x)))
-
-    def totalLoss(self, x_train, y_train, beta, lam=0.0) -> float:
-        return sum([self.logisticLoss(beta, x, y) for x, y in zip(x_train, y_train)]) + lam * np.dot(beta, beta)
-
-    def gradTotalLoss(self, x_train, y_train, beta, lam=0.0) -> np.array:
-        gradLogisticLosses = np.sum(np.array([self.gradLogisticLoss(beta, self.get_features(x), y)
-                                              for x, y
-                                              in zip(x_train, y_train)]), axis=0)
+    def gradTotalLossRDD(self, data: pyspark.RDD, beta: np.array, lam) -> np.array:
+        gradLogLoss = data.map(lambda inp: self.gradLogisticLoss(beta, self.get_features(inp[0]), inp[1]))\
+                             .reduce(lambda x, y: x + y)
         regularization = 2 * lam * beta
-        return gradLogisticLosses + regularization
+        return gradLogLoss + regularization
 
     def lineSearch(self, fun, x, grad, a=0.2, b=0.6):
         t = 1e-5
@@ -39,12 +27,7 @@ class ParallelLogisticRegressionModel:
             t = b * t
         return t
 
-    def basicMetrics(self, x_data, y_data, beta):
-        for i in y_data:
-            try:
-                int(i)
-            except:
-                print(i)
+    def basicMetricsRDD(self, data, beta):
         pairs = ((int(np.sign(np.dot(beta, self.get_features(x)))), int(y)) for (x, y) in zip(x_data, y_data))
         new_pairs = [(pred_label, pred_label * true_label) for (pred_label, true_label) in pairs]
 
@@ -56,17 +39,17 @@ class ParallelLogisticRegressionModel:
         N = TN + FN
         return P, N, TP, FP, TN, FN
 
-    def metrics(self, P, N, TP, FP, TN, FN):
-        acc = (TP + TN) / (P + N)
-        pre = TP / (TP + FP)
-        rec = TP / (TP + FN)
-        return acc, pre, rec
+    # def metrics(self, P, N, TP, FP, TN, FN):
+    #     acc = (TP + TN) / (P + N)
+    #     pre = TP / (TP + FP)
+    #     rec = TP / (TP + FN)
+    #     return acc, pre, rec
 
-    def get_metrics(self, x_data, y_data, beta):
-        P, N, TP, FP, TN, FN = self.basicMetrics(x_data, y_data, beta)
+    def get_metricsRDD(self, data, beta):
+        P, N, TP, FP, TN, FN = self.basicMetricsRDD(data, beta)
         return self.metrics(P, N, TP, FP, TN, FN)
 
-    def train(self, train_data, test_data, lam=1, eps=1e-3, max_iter=1000, N=20):
+    def trainRDD(self, train_data, test_data, lam=1, eps=1e-3, max_iter=1000, N=20):
         k = 1
         grad_norm = 2 * eps
         start = time.time()
@@ -75,15 +58,15 @@ class ParallelLogisticRegressionModel:
         metrics_t = []
         metrics_v = []
         while k < max_iter and grad_norm > eps:
-            grad = self.gradTotalLoss(x_train, y_train, self.weights, lam)
-            fun = lambda x: self.totalLoss(x_train, y_train, x, lam)
+            grad = self.gradTotalLossRDD(train_data, self.weights, lam)
+            fun = lambda x: self.totalLossRDD(train_data, x, lam)
             gamma = 1e-7
             # gamma = self.lineSearch(fun, self.weights, grad)
             self.weights -= gamma * grad
             obj = fun(self.weights)
             grad_norm = np.sqrt(np.dot(grad, grad))
-            acc_t, pre_t, rec_t = self.get_metrics(x_train, y_train, self.weights)
-            acc_v, pre_v, rec_v = self.get_metrics(x_test, y_test, self.weights)
+            acc_t, pre_t, rec_t = self.get_metricsRDD(train_data, self.weights)
+            acc_v, pre_v, rec_v = self.get_metricsRDD(test_data, self.weights)
             losses.append(obj)
             grad_norms.append(grad_norm)
             metrics_t.append((acc_t, pre_t, rec_t))

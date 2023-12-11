@@ -6,8 +6,8 @@ from LogRegUtils import *
 if __name__ == "__main__":
     # Set up argument parser and associated flags
     parser = argparse.ArgumentParser(description="Logistic Regression.", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--data', default='../data/Clean_data.csv', help='Input file containing all features and labels, used to train a logistic model')
-    parser.add_argument('--beta', default='./LogisticRegression/results/beta.txt', help='File where beta is stored')
+    parser.add_argument('--data', default='../../data/Clean_data.csv', help='Input file containing all features and labels, used to train a logistic model')
+    parser.add_argument('--beta', default='./results/beta.txt', help='File where beta is stored')
     parser.add_argument('--split', type=float, default=0.8, help='Test/Training split. Percentage of data to be used for training')
     parser.add_argument('--lam', type=float, default=0.0, help="Regularization parameter λ")
     parser.add_argument('--max_iter', type=int, default=2, help='Maximum number of iterations')

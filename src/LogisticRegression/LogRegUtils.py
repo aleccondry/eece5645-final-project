@@ -80,6 +80,7 @@ def unison_shuffled_copies(a, b):
 
 def create_data_plots(k, data, label=""):
     """ Create a plot of the data (loss or gradNorm) """
+    plt.figure()
     plt.plot([i for i in range(1, k)], data, label=label)
     plt.xlabel("Number of Iterations")
     plt.ylabel(label)
@@ -93,6 +94,7 @@ def create_metric_plots(k, metrics, label=""):
     accs = [x[0] for x in metrics]
     pres = [x[1] for x in metrics]
     recs = [x[2] for x in metrics]
+    plt.figure()
     plt.plot(iters, accs, label="Accuracy")
     plt.plot(iters, pres, label="Precision")
     plt.plot(iters, recs, label="Recall")

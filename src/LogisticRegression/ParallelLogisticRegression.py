@@ -29,11 +29,11 @@ def parallelize_data(spark_context, features, labels, N):
 if __name__ == "__main__":
     # Set up argument parser and associated flags
     parser = argparse.ArgumentParser(description="Logistic Regression.", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--data', default='../data/Clean_data.csv', help='Input file containing all features and labels, used to train a logistic model')
+    parser.add_argument('--data', default='../../data/Clean_data.csv', help='Input file containing all features and labels, used to train a logistic model')
     parser.add_argument('--beta', default='./results/beta', help='File where beta is stored')
     parser.add_argument('--split', type=float, default=0.8, help='Test/Training split. Percentage of data to be used for training')
     parser.add_argument('--lam', type=float, default=0.0, help="Regularization parameter λ")
-    parser.add_argument('--max_iter', type=int, default=10, help='Maximum number of iterations')
+    parser.add_argument('--max_iter', type=int, default=100, help='Maximum number of iterations')
     parser.add_argument('--N', type=int, default=20, help='Level of parallelism/number of partitions')
     parser.add_argument('--eps', type=float, default=0.1, help='ε-tolerance. If the l2_norm gradient is smaller than ε, gradient descent terminates.')
     parser.add_argument('--alpha', type=float, default=1e-7, help='Learning rate controlling the step size of gradient descent')

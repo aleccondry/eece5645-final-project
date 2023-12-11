@@ -33,11 +33,13 @@ if __name__ == "__main__":
     features_np, labels_np = unison_shuffled_copies(features_np, labels_np)
     print("Oversampling complete")
 
+    # Create model
     feature_labels = get_all_features(features_pd)
     model = LogisticRegressionModel(num_features=len(feature_labels), learning_rate=args.alpha)
+
+    # Create training split
     TRAIN_SPLIT = args.split
     END_IDX = int(len(labels_np) * TRAIN_SPLIT)
-
     labels_np[labels_np == 0] = -1
     x_train = features_np[0:END_IDX]
     y_train = labels_np[0:END_IDX]
@@ -45,8 +47,7 @@ if __name__ == "__main__":
     y_test = labels_np[END_IDX:]
     assert ((len(x_train) + len(x_test)) == (len(y_train) + len(y_test)) == len(features_np))
 
-    print('Training on data from', args.data,
-          'with: λ = %f, ε = %f, max iter= %d:' % (args.lam, args.eps, args.max_iter))
+    print('Training on data from', args.data, 'with: λ = %f, ε = %f, max iter= %d:' % (args.lam, args.eps, args.max_iter))
     t, k, losses, grad_norms, metrics_t, metrics_v, beta = model.train(x_train, y_train, x_test, y_test,
                                                                        lam=args.lam,
                                                                        eps=args.eps,

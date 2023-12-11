@@ -9,17 +9,61 @@ class ParallelLogisticRegressionModel(LogisticRegressionModel):
         super().__init__(num_features, learning_rate)
         self.weights = np.zeros(num_features + 1)
 
-    def totalLossRDD(self, data: pyspark.RDD, beta: np.array, lam) -> float:
+    def totalLossRDD(self, data, beta, lam) -> float:
+        """
+        Compute the regularized total logistic loss for a given beta, and all features and labels in the data
+        in parallel using the formula:
+               L(β) = Σ_{(x,y) in data}  l(β;x,y)  + λ||β||_2^2
+
+        Inputs:
+            beta: np.array
+                The weights of the current model
+            data: pyspark.RDD
+                An RDD of all features and labels with each element in the format (feature, label)
+            lam: float
+                The regularization factor
+
+        Returns:
+            The sum of the logistic loss for all features and labels plus L2 regularization
+        """
         return data.map(lambda inp: self.logisticLoss(beta, inp[0], inp[1]))\
                    .reduce(lambda x, y: x + y) + lam * np.dot(beta, beta)
 
-    def gradTotalLossRDD(self, data: pyspark.RDD, beta: np.array, lam) -> np.array:
+    def gradTotalLossRDD(self, data, beta, lam) -> np.array:
+        """
+        Compute the gradient of the regularized total logistic loss for a given beta, and all features and labels in
+        the data in parallel using the formula:
+                ∇L(β) = Σ_{(x,y) in data} ∇l(β;x,y) + 2λβ
+
+        Inputs:
+            beta: np.array
+                The weights of the current model
+            data: pyspark.RDD
+                An RDD of all features and labels with each element in the format (feature, label)
+            lam: float
+                The regularization factor
+
+        Returns:
+            The gradient of the sum of the logistic loss for all features and labels plus the gradient of L2 regularization
+        """
         gradLogLoss = data.map(lambda inp: self.gradLogisticLoss(beta, self.get_features(inp[0]), inp[1]))\
                              .reduce(lambda x, y: x + y)
         regularization = 2 * lam * beta
         return gradLogLoss + regularization
 
     def basicMetricsRDD(self, data, beta):
+        """
+        Compute the basic metrics in parallel [refer to LogisticRegressionModel.basicMetrics()]
+
+        Inputs:
+            beta: np.array
+                The weights of the current model
+            data:
+                An RDD of all features and labels with each element in the format (feature, label)
+
+        Returns:
+            A tuple of the positives, negatives, true positives, false positives, true negatives, false negatives
+        """
         pairsRDD = data.map(lambda inp: (int(np.sign(np.dot(beta, self.get_features(inp[0])))), int(inp[1])))
         new_pairs = pairsRDD.map(lambda inp: (inp[0], inp[0] * inp[1])).collect()
 
@@ -32,6 +76,9 @@ class ParallelLogisticRegressionModel(LogisticRegressionModel):
         return P, N, TP, FP, TN, FN
 
     def get_metricsRDD(self, data, beta):
+        """
+        Compute the accuracy, precision, and recall for a given dataset and weights in parallel
+        """
         P, N, TP, FP, TN, FN = self.basicMetricsRDD(data, beta)
         return self.metrics(P, N, TP, FP, TN, FN)
 

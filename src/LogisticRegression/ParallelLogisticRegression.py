@@ -5,6 +5,21 @@ from LogRegUtils import *
 
 
 def parallelize_data(spark_context, features, labels, N):
+    """
+    Parallelize a given dataset into an RDD for use with pyspark commands
+
+    Inputs:
+        spark_context: SparkContext
+            A spark object used to call the parallelize function
+        features: np.array
+            The features to parallelize
+        labels: np.array
+            The labels to parallelize
+        N: int
+            The number of partitions to split the data into
+    Returns:
+        An RDD with each element in the form (feature, label) with N partitions
+    """
     result = []
     for feature, label in zip(features, labels):
         result.append((feature, label))

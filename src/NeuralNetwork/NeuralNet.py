@@ -1,6 +1,9 @@
 import tensorflow as tf
 import pandas as pd
-import numpy as np
+import time
+import matplotlib.pyplot as plt
+
+
 print("TensorFlow version:", tf.__version__)
 
 data = pd.read_csv('../../data/Clean_data.csv')
@@ -31,12 +34,13 @@ y_test = test_data['Diabetes_binary']
 input_shape = [X_train.shape[1]]
  
 print(input_shape)
-
+num_hidden_layers = 64
+num_epochs = 50
 model = tf.keras.Sequential([
  
-    tf.keras.layers.Dense(units=64, activation='relu',
+    tf.keras.layers.Dense(units=num_hidden_layers, activation='sigmoid',
                           input_shape=input_shape),
-    tf.keras.layers.Dense(units=64, activation='relu'),
+    tf.keras.layers.Dense(units=num_hidden_layers, activation='sigmoid'),
     tf.keras.layers.Dense(units=1)
 ])
 model.summary()
@@ -47,16 +51,30 @@ model.compile(optimizer='adam',
               # numerical predictions
               loss='mae') 
 
+
+start_time = time.time()
 losses = model.fit(X_train, y_train,
                     
                    # it will use 'batch_size' number
                    # of examples per example
                    batch_size=256, 
-                   epochs=15,  # total epoch
- 
+                   epochs=num_epochs,  # total epoch
                    )
+# print(model.predict(X_test.iloc[0:3, :]))
+training_time = time.time() - start_time
+print(f"Training time = {training_time} seconds")
+plt.plot(losses.history['accuracy'])
+plt.plot(losses.history['precision'])
+plt.plot(losses.history['recall'])
+plt.plot(losses.history['loss'])
 
-print(model.predict(X_test.iloc[0:3, :]))
-print(y_test.iloc[0:3])
-performance = model.evaluate(X_test, y_test)
+plt.title('Model Performance for Serial NN')
+plt.ylabel('Performance')
+plt.xlabel('Epoch')
+plt.legend(['Accuracy', 'Precision', 'Recall', 'Loss'], loc='upper left')
+plt.savefig(f'plots/serial_{num_hidden_layers}_neurons_{num_epochs}_epochs.png')
+# plt.show()
+
+# print(y_test.iloc[0:3])
+# performance = model.evaluate(X_test, y_test)
 

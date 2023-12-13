@@ -102,4 +102,4 @@ def create_metric_plots(k, metrics, label=""):
     plt.xlabel("Number of Iterations")
     plt.ylabel("Metric Value")
     plt.title(f'{label} Metrics vs Number of Iterations')
-    plt.savefig(f'./results/metrics_fig_unparallelized.png')
+    plt.savefig(f'./results/metrics_fig_{label}.png')
